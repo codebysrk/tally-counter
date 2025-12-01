@@ -1,280 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Realistic Counter</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Counter — No Shrink, Centered, Responsive Scale</title>
 
-    <!-- Calculator digit font -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<!-- Calculator-style digit font -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
 
-    <style>
-        * { box-sizing: border-box; }
+<style>
+  * { box-sizing: border-box; }
+  html,body { height: 100%; }
+  body{
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start; /* gives room for top-origin scaling */
+    justify-content: center;
+    background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.7), transparent 10%),
+                linear-gradient(180deg,#f8fbff 0%, #eef3fb 40%, #f0f4fb 100%);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    -webkit-font-smoothing:antialiased;
+    padding: 36px 16px 220px; /* safe vertical space for scaled content */
+    overflow-x: hidden; /* avoid horizontal scrollbar when scaling */
+  }
 
-        body {
-            background: radial-gradient(circle at top, #ffffff, #e3e7f0);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
-        }
+  .stage{
+    width: 100%;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    pointer-events:auto;
+  }
 
-        .wrap {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            padding-bottom: 40px;
-        }
+  /* ---------- FIX: fixed base width to prevent internal shrink ---------- */
+  .counter-container{
+    width: 360px;          /* base design width */
+    max-width: 360px;
+    background: linear-gradient(145deg,#ffffff,#f1f3f8);
+    border-radius: 999px;
+    padding: 16px 22px;
+    display:flex;
+    align-items:center;
+    gap: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.05);
+    position: relative;
+    justify-content: space-between;
+    transform-origin: top center; /* scale from top center to avoid clipping at bottom */
+    transition: transform .18s ease;
+    margin: 0 auto;
+  }
 
-        .counter-container {
-            background: linear-gradient(145deg, #ffffff, #f1f3f8);
-            padding: 1rem 1.8rem;
-            border-radius: 999px;
-            display: flex;
-            align-items: center;
-            gap: clamp(1.2rem, 3vw, 2.2rem);
-            box-shadow:
-                0 20px 40px rgba(0,0,0,0.10),
-                0 4px 8px rgba(0,0,0,0.05);
-            position: relative;
-            max-width: min(95vw, 480px);
-            width: 100%;
-            justify-content: space-between;
-            transform-origin: center;
-            transition: transform .18s ease;
-        }
+  .counter-container::after{
+    content:"";
+    position:absolute;
+    left:50%; bottom:8px;
+    transform: translateX(-50%);
+    width:16px; height:3px;
+    background: rgba(0,0,0,0.14);
+    border-radius:999px;
+    filter: blur(.6px);
+  }
 
-        .counter-container::after {
-            content: '';
-            position: absolute;
-            bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 16px;
-            height: 3px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 999px;
-            filter: blur(1px);
-        }
+  .btn{
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition: transform .12s, opacity .12s;
+    flex-shrink: 0; /* prevent shrinking */
+  }
+  .btn:active{ transform: translateY(1px) scale(.96); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
 
-        .btn {
-            width: clamp(52px, 15vw, 68px);
-            height: clamp(52px, 15vw, 68px);
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition:
-                transform 0.1s ease,
-                box-shadow 0.15s ease,
-                background 0.15s ease,
-                opacity 0.2s ease;
-        }
+  .btn-minus{ background:#f5f5f7; box-shadow: inset 0 -3px 6px rgba(0,0,0,0.10), 0 10px 18px rgba(0,0,0,0.04); color:#111; }
+  .btn-plus{ background: linear-gradient(180deg,#ff7a3f,#ff3e00); box-shadow: 0 12px 26px rgba(255,80,30,0.26); color:#fff; }
 
-        .btn:active { transform: scale(0.93) translateY(1px); }
+  svg{ width: 26px; height: 26px; stroke-width:3; }
 
-        .btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
+  .center-block{ display:flex; flex-direction:column; align-items:center; gap:8px; flex:1; min-width:120px; }
 
-        .btn-minus {
-            background: #f5f5f7;
-            box-shadow:
-                inset 0 -3px 4px rgba(0,0,0,0.12),
-                0 8px 14px rgba(0,0,0,0.12);
-        }
+  .display{
+    background: radial-gradient(circle at top,#fff,#dde2ee);
+    border-radius: 14px;
+    padding: 10px 18px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.9), inset 0 -3px 6px rgba(0,0,0,0.10);
+    position:relative;
+    flex-shrink: 0; /* prevent shrinking */
+  }
+  .display::before{ content:""; position:absolute; left:10%; top:0; width:80%; height:45%; background: linear-gradient(to bottom, rgba(255,255,255,0.75), transparent); pointer-events:none; border-radius:10px; }
 
-        .btn-plus {
-            background: linear-gradient(145deg, #ff6a2a, #ff3e00);
-            box-shadow: 0 10px 18px rgba(255,90,0,0.45);
-            color: #fff;
-        }
+  .count-value{
+    font-family: "Orbitron", ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+    font-weight:700;
+    font-size: 36px;
+    color:#061126;
+    letter-spacing:.02em;
+    min-width:2ch;
+    text-align:center;
+    padding: 2px 6px;
+    flex-shrink: 0; /* prevent shrinking */
+  }
 
-        svg {
-            width: clamp(20px, 6vw, 26px);
-            height: clamp(20px, 6vw, 26px);
-            stroke-width: 3;
-        }
+  .btn-reset{
+    width: 36px;
+    height: 36px;
+    border-radius:50%;
+    border:none;
+    background:#e6e9f2;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.08), inset 0 1px 2px rgba(255,255,255,0.9);
+    cursor:pointer;
+    flex-shrink: 0; /* prevent shrinking */
+  }
+  .btn-reset-icon{ width:16px; height:16px; border-radius:50%; border:2px solid #555; position:relative; }
+  .btn-reset-icon::after{ content:""; position:absolute; width:6px; height:6px; border-top:2px solid #555; border-right:2px solid #555; top:-2px; right:-2px; transform:rotate(35deg); }
 
-        .center-block {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: .5rem;
-            flex: 1;
-        }
+  /* ---------------- RESPONSIVE SCALE (Option A) ----------------
+     Keep base width fixed (360px) and only scale the visual.
+     This prevents internal elements from shrinking.
+  ------------------------------------------------------------------*/
 
-        .display {
-            background: radial-gradient(circle at top, #ffffff, #dde2ee);
-            border-radius: 16px;
-            padding: 0.4rem 1.5rem;
-            min-width: clamp(90px, 40vw, 150px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow:
-                inset 0 2px 4px rgba(255,255,255,0.9),
-                inset 0 -3px 6px rgba(0,0,0,0.12);
-            position: relative;
-            overflow: hidden;
-        }
+  /* phones: gentle scale */
+  @media (max-width: 480px) {
+    .counter-container { transform: scale(1.22); }
+    body { padding-bottom: 140px; }
+  }
 
-        .display::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 10%;
-            width: 80%;
-            height: 45%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.7), transparent);
-        }
+  /* smaller phones: stronger scale */
+  @media (max-width: 420px) {
+    .counter-container { transform: scale(1.33); }
+    body { padding-bottom: 160px; }
+  }
 
-        .count-value {
-            font-family: "Orbitron", monospace;
-            font-size: clamp(2rem, 6vw, 3rem);
-            font-weight: 700;
-            color: #111;
-            letter-spacing: .04em;
-            min-width: 2ch;
-            text-align: center;
-        }
+  @media (max-width: 360px) {
+    .counter-container { transform: scale(1.48); }
+    body { padding-bottom: 200px; }
+  }
 
-        .btn-reset {
-            width: clamp(30px, 9vw, 38px);
-            height: clamp(30px, 9vw, 38px);
-            border-radius: 50%;
-            border: none;
-            background: #e6e9f2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow:
-                0 4px 8px rgba(0,0,0,0.15),
-                inset 0 1px 2px rgba(255,255,255,0.9);
-        }
+  @media (max-width: 320px) {
+    .counter-container { transform: scale(1.62); }
+    body { padding-bottom: 240px; }
+  }
 
-        .btn-reset-icon {
-            width: clamp(14px, 4vw, 18px);
-            height: clamp(14px, 4vw, 18px);
-            border-radius: 50%;
-            border: 2px solid #555;
-            position: relative;
-        }
+  /* keep perfectly centered horizontally */
+  .stage, .counter-container { margin-left: auto; margin-right: auto; }
 
-        .btn-reset-icon::after {
-            content: "";
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            border-top: 2px solid #555;
-            border-right: 2px solid #555;
-            top: -2px;
-            right: -2px;
-            transform: rotate(35deg);
-        }
-
-        @media (max-width: 480px) {
-            .counter-container {
-                transform: scale(1.25);
-            }
-            .wrap { padding-bottom: 50px; }
-        }
-
-        @media (max-width: 420px) {
-            .counter-container {
-                transform: scale(1.38);
-            }
-            .wrap { padding-bottom: 60px; }
-        }
-
-        @media (max-width: 360px) {
-            .counter-container {
-                transform: scale(1.55);
-            }
-            .wrap { padding-bottom: 75px; }
-        }
-
-        @media (max-width: 320px) {
-            .counter-container {
-                transform: scale(1.70);
-            }
-            .wrap { padding-bottom: 95px; }
-        }
-    </style>
+  /* accessibility focus */
+  .btn:focus-visible, .btn-reset:focus-visible { outline:none; box-shadow: 0 0 0 6px rgba(0,0,0,0.06); }
+</style>
 </head>
 <body>
-
-<div class="wrap">
-<div class="counter-container">
-    
-    <button class="btn btn-minus">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <line x1="5" y1="12" x2="19" y2="12" />
+  <div class="stage" aria-hidden="false">
+    <div class="counter-container" role="group" aria-label="Counter component">
+      <button class="btn btn-minus" aria-label="Decrease">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
-    </button>
+      </button>
 
-    <div class="center-block">
-        <div class="display">
-            <span class="count-value">0</span>
+      <div class="center-block">
+        <div class="display" aria-hidden="false">
+          <div class="count-value">0</div>
         </div>
 
-        <button class="btn-reset">
-            <div class="btn-reset-icon"></div>
+        <button class="btn-reset" aria-label="Reset">
+          <div class="btn-reset-icon" aria-hidden="true"></div>
         </button>
-    </div>
+      </div>
 
-    <button class="btn btn-plus">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
+      <button class="btn btn-plus" aria-label="Increase">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
-    </button>
-
-</div>
-</div>
+      </button>
+    </div>
+  </div>
 
 <script>
-    const min = 0;
-    const max = 10;
-    let counter = 0;
+  // ORIGINAL LOGIC PRESERVED
+  const min = 0;
+  const max = 10;
+  let counter = 0;
 
-    const count = document.querySelector(".count-value");
-    const minusBtn = document.querySelector(".btn-minus");
-    const plusBtn = document.querySelector(".btn-plus");
-    const resetBtn = document.querySelector(".btn-reset");
+  const countEl = document.querySelector('.count-value');
+  const minusBtn = document.querySelector('.btn-minus');
+  const plusBtn = document.querySelector('.btn-plus');
+  const resetBtn = document.querySelector('.btn-reset');
 
-    function updateUI() {
-        count.textContent = counter;
+  function updateUI(){
+    countEl.textContent = counter;
+    minusBtn.disabled = counter <= min;
+    plusBtn.disabled = counter >= max;
+  }
 
-        minusBtn.disabled = counter <= min;
-        plusBtn.disabled = counter >= max;
-    }
-
-    minusBtn.addEventListener("click", () => {
-        if (counter > min) counter--;
-        updateUI();
-    });
-
-    plusBtn.addEventListener("click", () => {
-        if (counter < max) counter++;
-        updateUI();
-    });
-
-    resetBtn.addEventListener("click", () => {
-        counter = 0;
-        updateUI();
-    });
-
+  minusBtn.addEventListener('click', ()=> {
+    if(counter > min) counter--;
     updateUI();
-</script>
+  });
 
+  plusBtn.addEventListener('click', ()=> {
+    if(counter < max) counter++;
+    updateUI();
+  });
+
+  resetBtn.addEventListener('click', ()=> {
+    counter = 0;
+    updateUI();
+  });
+
+  // initial render
+  updateUI();
+</script>
 </body>
 </html>
